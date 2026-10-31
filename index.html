@@ -6,6 +6,8 @@
 <title>برنامج الفواتير</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
   :root{--main:#1d4ed8;--bg:#f3f4f6;--line:#d1d5db;--txt:#111827}
   *{box-sizing:border-box}
@@ -21,6 +23,7 @@
   input,select,textarea{width:100%;padding:8px;border:1px solid var(--line);border-radius:6px;font-size:14px;font-family:inherit}
   button.btn{background:var(--main);color:#fff;border:0;padding:9px 16px;border-radius:6px;cursor:pointer;font-size:14px}
   button.btn.gray{background:#6b7280}
+  button.btn.green{background:#16a34a}
   button.btn.red{background:#dc2626}
   button.sm{padding:4px 10px;font-size:12px}
   .row{display:flex;gap:8px;align-items:flex-end}
@@ -172,6 +175,7 @@
     <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn" id="printBtn">🖨️ طباعة / حفظ PDF</button>
       <button class="btn gray" id="previewBtn">👁️ معاينة</button>
+      <button class="btn green" id="waBtn">📲 مشاركة واتساب</button>
       <button class="btn gray" id="newBtn">فاتورة جديدة</button>
     </div>
     <div class="note">عند ظهور نافذة الطباعة اختر الوجهة: "حفظ بتنسيق PDF" لتحصل على ملف PDF، أو اختر الطابعة للطباعة مباشرة.</div>
@@ -279,7 +283,7 @@
   <div style="margin-top:12px"><button class="btn" id="loginBtn" style="width:100%">دخول</button></div>
   <div id="loginErr" class="note" style="color:#dc2626"></div>
 </div></div>
-<div id="pvBar" class="noprint"><button class="btn" id="pvPrint">🖨️ طباعة</button><button class="btn gray" id="pvClose">✖ إغلاق المعاينة</button></div>
+<div id="pvBar" class="noprint"><button class="btn" id="pvPrint">🖨️ طباعة</button><button class="btn green" id="pvWa">📲 مشاركة واتساب</button><button class="btn gray" id="pvClose">✖ إغلاق المعاينة</button></div>
 <div id="pinBox" class="modal hidden noprint"><div class="mbox">
   <h2>🔒 رمز الأدمن</h2>
   <input id="pinInput" type="password" placeholder="الرمز الافتراضي: 1234">
@@ -340,7 +344,7 @@ async function loadAll(){
   renderProducts(); render(); applyPaper(); applyLang();
 }
 
-const FR = {"استيراد المواد من Excel": "Importer des articles depuis Excel", "ملف Excel أو CSV فيه عمودان: اسم المادة والسعر (الصف الأول عناوين). المواد الموجودة بنفس الاسم يتحدّث سعرها.": "Fichier Excel ou CSV avec deux colonnes : désignation et prix (la première ligne contient les titres). Les articles existants du même nom voient leur prix mis à jour.", "⬇️ تحميل نموذج الملف": "⬇️ Télécharger le modèle de fichier", "ابحث باسم العميل أو هاتفه أو رقم الفاتورة": "Rechercher par client, téléphone ou n° de facture", "تعذر تحميل مكتبة Excel": "Impossible de charger la bibliothèque Excel", "لم أجد مواد في الملف": "Aucun article trouvé dans le fichier", "تعذر قراءة الملف": "Impossible de lire le fichier", "تم الاستيراد ✔": "Import terminé ✔", "استيراد المواد": "Importer les articles", "جديدة": "nouveaux", "تحديث السعر": "prix mis à jour","الإعدادات (أدمن)":"Paramètres (admin)","🔐 تسجيل الدخول": "🔐 Connexion", "رقم الهاتف": "Numéro de téléphone", "كلمة السر": "Mot de passe", "مثال: 36332213": "Exemple : 36332213", "بيانات الدخول غير صحيحة": "Identifiants incorrects", "الفواتير المحفوظة": "Factures enregistrées", "العميل": "Client", "فتح": "Ouvrir", "خروج": "Déconnexion", "لا توجد فواتير محفوظة": "Aucune facture enregistrée", "تعذر الحفظ": "Échec de l'enregistrement", "تم حفظ الفاتورة ✔": "Facture enregistrée ✔", "حذف هذه الفاتورة؟": "Supprimer cette facture ?","👁️ معاينة":"👁️ Aperçu","🖨️ طباعة":"🖨️ Imprimer","✖ إغلاق المعاينة":"✖ Fermer l'aperçu","رقم العميل":"Téléphone du client","الهاتف":"Téléphone","رقم العميل:":"Tél. client :","🧾 برنامج الفواتير": "🧾 Logiciel de facturation", "الفاتورة": "Facture", "المواد والأسعار": "Articles et prix", "🔒 الإعدادات (أدمن)": "🔒 Paramètres (admin)", "بيانات الفاتورة": "Informations de la facture", "اسم العميل": "Nom du client", "التاريخ": "Date", "إضافة مادة": "Ajouter un article", "اختر مادة من القائمة": "Choisir un article dans la liste", "اكتب اسم المادة": "Saisir le nom de l'article", "مثال: خدمة توصيل": "Exemple : Service de livraison", "احفظ هذه المادة في قائمة المواد": "Enregistrer cet article dans la liste", "الكمية": "Quantité", "السعر": "Prix", "+ إضافة": "+ Ajouter", "يمكنك تعديل السعر هنا قبل الإضافة. لإضافة مادة غير موجودة بالقائمة أضفها من تبويب \"المواد والأسعار\".": "Vous pouvez modifier le prix ici avant l'ajout. Pour un article absent de la liste, ajoutez-le dans l'onglet « Articles et prix ».", "بنود الفاتورة": "Lignes de la facture", "المادة": "Article", "الإجمالي": "Montant", "الخصم (مبلغ)": "Remise (montant)", "الضريبة %": "Taxe %", "مقاس ورقة الطباعة": "Format d'impression", "A4 (ورقة كاملة)": "A4 (page entière)", "A5 (نصف ورقة)": "A5 (demi-page)", "إيصال حراري 80mm": "Ticket thermique 80mm", "إيصال حراري 58mm": "Ticket thermique 58mm", "🖨️ طباعة / حفظ PDF": "🖨️ Imprimer / Enregistrer en PDF", "فاتورة جديدة": "Nouvelle facture", "عند ظهور نافذة الطباعة اختر الوجهة: \"حفظ بتنسيق PDF\" لتحصل على ملف PDF، أو اختر الطابعة للطباعة مباشرة.": "Dans la fenêtre d'impression, choisissez « Enregistrer au format PDF » pour obtenir un PDF, ou choisissez l'imprimante.", "فاتورة رقم:": "Facture N° :", "العميل:": "Client :", "التاريخ:": "Date :", "المجموع": "Sous-total", "الخصم": "Remise", "الضريبة": "Taxe", "الإجمالي النهائي": "Total", "إضافة مادة جديدة": "Ajouter un nouvel article", "اسم المادة": "Nom de l'article", "قائمة المواد": "Liste des articles", "عدّل الاسم أو السعر مباشرة داخل الجدول، والتغيير يُحفظ تلقائيا.": "Modifiez le nom ou le prix directement dans le tableau ; les changements sont enregistrés automatiquement.", "إعدادات الفاتورة (الأدمن)": "Paramètres de la facture (admin)", "اسم الشركة / المحل": "Nom de l'entreprise / magasin", "بيانات الهيدر (العنوان، الهاتف ...) — كل سطر في سطر جديد": "Informations d'en-tête (adresse, téléphone...) — une ligne par info", "نص أسفل الفاتورة (الفوتر)": "Texte de pied de page (arabe)", "نص أسفل الفاتورة بالفرنسية (الفوتر)": "Texte de pied de page (français)", "العملة": "Devise", "لون الفاتورة": "Couleur de la facture", "اللوجو": "Logo", "حذف اللوجو": "Supprimer le logo", "نموذج الصفحة للطباعة": "Modèle de page pour l'impression", "ارفع صورة ورقة جاهزة (ترويسة المحل أو تصميم الصفحة) لتُطبع الفاتورة فوقها. تعمل مع ورقة A4.": "Importez une image de page prête (en-tête ou design) sur laquelle la facture sera imprimée. Fonctionne avec une page A4.", "إخفاء الهيدر واللوجو الافتراضيين (لأن النموذج يحتوي ترويسة)": "Masquer l'en-tête et le logo par défaut (le modèle contient déjà un en-tête)", "مسافة من الأعلى (mm)": "Marge haut (mm)", "من الأسفل (mm)": "Bas (mm)", "من الجانبين (mm)": "Côtés (mm)", "زد \"المسافة من الأعلى\" حتى يبدأ محتوى الفاتورة تحت ترويسة النموذج. بعد الحفظ شاهد المعاينة وعدّل.": "Augmentez la marge haut pour que le contenu commence sous l'en-tête du modèle. Après l'enregistrement, vérifiez l'aperçu.", "حذف النموذج": "Supprimer le modèle", "رمز الأدمن الجديد (اتركه فارغا إن لم ترد تغييره)": "Nouveau code admin (laisser vide pour ne pas changer)", "الرمز الافتراضي: 1234": "Code par défaut : 1234", "حفظ الإعدادات": "Enregistrer les paramètres", "ملاحظة: الرمز حماية بسيطة فقط. البيانات محفوظة في قاعدة البيانات (Supabase).": "Remarque : le code n'est qu'une protection simple. Les données sont enregistrées dans la base de données (Supabase).", "🔒 رمز الأدمن": "🔒 Code admin", "دخول": "Entrer", "إلغاء": "Annuler", "نعم": "Oui", "— اختر مادة —": "— Choisir un article —", "✍️ كتابة مادة يدويا...": "✍️ Saisir un article manuellement...", "حذف": "Suppr.", "لا توجد بنود": "Aucune ligne", "اختر مادة من القائمة أو اكتب اسمها": "Choisissez un article dans la liste ou saisissez son nom", "أدخل كمية صحيحة": "Saisissez une quantité valide", "أضف مادة واحدة على الأقل": "Ajoutez au moins un article", "تعذر الحفظ في المتصفح": "Impossible d'enregistrer dans le navigateur", "الرمز غير صحيح": "Code incorrect", "تم الحفظ ✔": "Enregistré ✔", "تم حفظ اللوجو ✔": "Logo enregistré ✔", "تم حذف اللوجو": "Logo supprimé", "تعذر قراءة الصورة، جرّب صورة أخرى": "Impossible de lire l'image, essayez-en une autre", "تم حفظ نموذج الصفحة ✔": "Modèle enregistré ✔", "تعذر قراءة الصورة": "Impossible de lire l'image", "تم حذف النموذج": "Modèle supprimé", "حذف هذه المادة؟": "Supprimer cet article ?", "بدء فاتورة جديدة؟ سيتم مسح البنود الحالية.": "Nouvelle facture ? Les lignes actuelles seront effacées."};
+const FR = {"📲 مشاركة واتساب": "📲 Partager sur WhatsApp", "جاري تجهيز ملف PDF...": "Préparation du PDF...", "تعذر إنشاء ملف PDF": "Impossible de créer le PDF", "تم تنزيل ملف PDF، أرفقه في محادثة واتساب": "PDF téléchargé, joignez-le dans la conversation WhatsApp","استيراد المواد من Excel": "Importer des articles depuis Excel", "ملف Excel أو CSV فيه عمودان: اسم المادة والسعر (الصف الأول عناوين). المواد الموجودة بنفس الاسم يتحدّث سعرها.": "Fichier Excel ou CSV avec deux colonnes : désignation et prix (la première ligne contient les titres). Les articles existants du même nom voient leur prix mis à jour.", "⬇️ تحميل نموذج الملف": "⬇️ Télécharger le modèle de fichier", "ابحث باسم العميل أو هاتفه أو رقم الفاتورة": "Rechercher par client, téléphone ou n° de facture", "تعذر تحميل مكتبة Excel": "Impossible de charger la bibliothèque Excel", "لم أجد مواد في الملف": "Aucun article trouvé dans le fichier", "تعذر قراءة الملف": "Impossible de lire le fichier", "تم الاستيراد ✔": "Import terminé ✔", "استيراد المواد": "Importer les articles", "جديدة": "nouveaux", "تحديث السعر": "prix mis à jour","الإعدادات (أدمن)":"Paramètres (admin)","🔐 تسجيل الدخول": "🔐 Connexion", "رقم الهاتف": "Numéro de téléphone", "كلمة السر": "Mot de passe", "مثال: 36332213": "Exemple : 36332213", "بيانات الدخول غير صحيحة": "Identifiants incorrects", "الفواتير المحفوظة": "Factures enregistrées", "العميل": "Client", "فتح": "Ouvrir", "خروج": "Déconnexion", "لا توجد فواتير محفوظة": "Aucune facture enregistrée", "تعذر الحفظ": "Échec de l'enregistrement", "تم حفظ الفاتورة ✔": "Facture enregistrée ✔", "حذف هذه الفاتورة؟": "Supprimer cette facture ?","👁️ معاينة":"👁️ Aperçu","🖨️ طباعة":"🖨️ Imprimer","✖ إغلاق المعاينة":"✖ Fermer l'aperçu","رقم العميل":"Téléphone du client","الهاتف":"Téléphone","رقم العميل:":"Tél. client :","🧾 برنامج الفواتير": "🧾 Logiciel de facturation", "الفاتورة": "Facture", "المواد والأسعار": "Articles et prix", "🔒 الإعدادات (أدمن)": "🔒 Paramètres (admin)", "بيانات الفاتورة": "Informations de la facture", "اسم العميل": "Nom du client", "التاريخ": "Date", "إضافة مادة": "Ajouter un article", "اختر مادة من القائمة": "Choisir un article dans la liste", "اكتب اسم المادة": "Saisir le nom de l'article", "مثال: خدمة توصيل": "Exemple : Service de livraison", "احفظ هذه المادة في قائمة المواد": "Enregistrer cet article dans la liste", "الكمية": "Quantité", "السعر": "Prix", "+ إضافة": "+ Ajouter", "يمكنك تعديل السعر هنا قبل الإضافة. لإضافة مادة غير موجودة بالقائمة أضفها من تبويب \"المواد والأسعار\".": "Vous pouvez modifier le prix ici avant l'ajout. Pour un article absent de la liste, ajoutez-le dans l'onglet « Articles et prix ».", "بنود الفاتورة": "Lignes de la facture", "المادة": "Article", "الإجمالي": "Montant", "الخصم (مبلغ)": "Remise (montant)", "الضريبة %": "Taxe %", "مقاس ورقة الطباعة": "Format d'impression", "A4 (ورقة كاملة)": "A4 (page entière)", "A5 (نصف ورقة)": "A5 (demi-page)", "إيصال حراري 80mm": "Ticket thermique 80mm", "إيصال حراري 58mm": "Ticket thermique 58mm", "🖨️ طباعة / حفظ PDF": "🖨️ Imprimer / Enregistrer en PDF", "فاتورة جديدة": "Nouvelle facture", "عند ظهور نافذة الطباعة اختر الوجهة: \"حفظ بتنسيق PDF\" لتحصل على ملف PDF، أو اختر الطابعة للطباعة مباشرة.": "Dans la fenêtre d'impression, choisissez « Enregistrer au format PDF » pour obtenir un PDF, ou choisissez l'imprimante.", "فاتورة رقم:": "Facture N° :", "العميل:": "Client :", "التاريخ:": "Date :", "المجموع": "Sous-total", "الخصم": "Remise", "الضريبة": "Taxe", "الإجمالي النهائي": "Total", "إضافة مادة جديدة": "Ajouter un nouvel article", "اسم المادة": "Nom de l'article", "قائمة المواد": "Liste des articles", "عدّل الاسم أو السعر مباشرة داخل الجدول، والتغيير يُحفظ تلقائيا.": "Modifiez le nom ou le prix directement dans le tableau ; les changements sont enregistrés automatiquement.", "إعدادات الفاتورة (الأدمن)": "Paramètres de la facture (admin)", "اسم الشركة / المحل": "Nom de l'entreprise / magasin", "بيانات الهيدر (العنوان، الهاتف ...) — كل سطر في سطر جديد": "Informations d'en-tête (adresse, téléphone...) — une ligne par info", "نص أسفل الفاتورة (الفوتر)": "Texte de pied de page (arabe)", "نص أسفل الفاتورة بالفرنسية (الفوتر)": "Texte de pied de page (français)", "العملة": "Devise", "لون الفاتورة": "Couleur de la facture", "اللوجو": "Logo", "حذف اللوجو": "Supprimer le logo", "نموذج الصفحة للطباعة": "Modèle de page pour l'impression", "ارفع صورة ورقة جاهزة (ترويسة المحل أو تصميم الصفحة) لتُطبع الفاتورة فوقها. تعمل مع ورقة A4.": "Importez une image de page prête (en-tête ou design) sur laquelle la facture sera imprimée. Fonctionne avec une page A4.", "إخفاء الهيدر واللوجو الافتراضيين (لأن النموذج يحتوي ترويسة)": "Masquer l'en-tête et le logo par défaut (le modèle contient déjà un en-tête)", "مسافة من الأعلى (mm)": "Marge haut (mm)", "من الأسفل (mm)": "Bas (mm)", "من الجانبين (mm)": "Côtés (mm)", "زد \"المسافة من الأعلى\" حتى يبدأ محتوى الفاتورة تحت ترويسة النموذج. بعد الحفظ شاهد المعاينة وعدّل.": "Augmentez la marge haut pour que le contenu commence sous l'en-tête du modèle. Après l'enregistrement, vérifiez l'aperçu.", "حذف النموذج": "Supprimer le modèle", "رمز الأدمن الجديد (اتركه فارغا إن لم ترد تغييره)": "Nouveau code admin (laisser vide pour ne pas changer)", "الرمز الافتراضي: 1234": "Code par défaut : 1234", "حفظ الإعدادات": "Enregistrer les paramètres", "ملاحظة: الرمز حماية بسيطة فقط. البيانات محفوظة في قاعدة البيانات (Supabase).": "Remarque : le code n'est qu'une protection simple. Les données sont enregistrées dans la base de données (Supabase).", "🔒 رمز الأدمن": "🔒 Code admin", "دخول": "Entrer", "إلغاء": "Annuler", "نعم": "Oui", "— اختر مادة —": "— Choisir un article —", "✍️ كتابة مادة يدويا...": "✍️ Saisir un article manuellement...", "حذف": "Suppr.", "لا توجد بنود": "Aucune ligne", "اختر مادة من القائمة أو اكتب اسمها": "Choisissez un article dans la liste ou saisissez son nom", "أدخل كمية صحيحة": "Saisissez une quantité valide", "أضف مادة واحدة على الأقل": "Ajoutez au moins un article", "تعذر الحفظ في المتصفح": "Impossible d'enregistrer dans le navigateur", "الرمز غير صحيح": "Code incorrect", "تم الحفظ ✔": "Enregistré ✔", "تم حفظ اللوجو ✔": "Logo enregistré ✔", "تم حذف اللوجو": "Logo supprimé", "تعذر قراءة الصورة، جرّب صورة أخرى": "Impossible de lire l'image, essayez-en une autre", "تم حفظ نموذج الصفحة ✔": "Modèle enregistré ✔", "تعذر قراءة الصورة": "Impossible de lire l'image", "تم حذف النموذج": "Modèle supprimé", "حذف هذه المادة؟": "Supprimer cet article ?", "بدء فاتورة جديدة؟ سيتم مسح البنود الحالية.": "Nouvelle facture ? Les lignes actuelles seront effacées."};
 const T = k => (db && db.lang === 'fr' && FR[k]) || k;
 function applyLang(){
   const fr = db.lang === 'fr';
@@ -585,6 +589,52 @@ $('printBtn').onclick = async () => {
   toast(T('تم حفظ الفاتورة ✔'));
   setTimeout(() => window.print(), 250);
 };
+
+// ===== مشاركة الفاتورة على واتساب =====
+async function makePdf(no){
+  const sh = $('sheet');
+  sh.style.zoom = ''; sh.style.width = '794px'; sh.style.maxWidth = 'none'; sh.style.flex = 'none'; sh.style.minHeight = '1119px';
+  try {
+    const cv = await html2canvas(sh, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const imgH = 210 * cv.height / cv.width, img = cv.toDataURL('image/jpeg', 0.92);
+    const pages = Math.max(1, Math.ceil(imgH / 297 - 0.01));
+    for (let i = 0; i < pages; i++) { if (i) pdf.addPage(); pdf.addImage(img, 'JPEG', 0, -i * 297, 210, imgH); }
+    return new File([pdf.output('blob')], 'facture-' + no + '.pdf', { type: 'application/pdf' });
+  } finally { applyPaper(); }
+}
+function downloadFile(f){
+  const u = URL.createObjectURL(f), a = document.createElement('a');
+  a.href = u; a.download = f.name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 4000);
+}
+let waBusy = false;
+async function shareInvoice(){
+  if (!lines.length) return alert(T('أضف مادة واحدة على الأقل'));
+  if (waBusy) return; waBusy = true;
+  try {
+    if (!(await saveInvoice())) return;
+    const c = calc(), cur = ' ' + db.settings.currency, no = String(db.counter).padStart(4,'0'), cust = $('customer').value.trim();
+    const foot = (db.lang === 'fr' && db.settings.footerFr) ? db.settings.footerFr : db.settings.footer;
+    const msg = [T('فاتورة رقم:') + ' ' + no, cust ? T('العميل:') + ' ' + cust : '', T('التاريخ:') + ' ' + $('idate').value,
+                 T('الإجمالي النهائي') + ': ' + fmt(c.total) + cur, foot].filter(Boolean).join('\n');
+    let d = String($('cphone').value).replace(/\D/g, ''); if (d.startsWith('00')) d = d.slice(2); if (d.length === 8) d = '222' + d;
+    const waUrl = 'https://wa.me/' + d + '?text=' + encodeURIComponent(msg);
+    let file = null;
+    if (window.html2canvas && window.jspdf) {
+      toast(T('جاري تجهيز ملف PDF...'));
+      try { file = await makePdf(no); } catch (e) { file = null; toast(T('تعذر إنشاء ملف PDF')); }
+    }
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], text: msg }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    if (file) { downloadFile(file); toast(T('تم تنزيل ملف PDF، أرفقه في محادثة واتساب')); }
+    window.open(waUrl, '_blank');
+  } finally { waBusy = false; }
+}
+$('waBtn').onclick = shareInvoice;
+$('pvWa').onclick = shareInvoice;
+
 async function newInvoice(){
   curInvoiceId = null; lines = [];
   $('customer').value=''; $('cphone').value=''; $('discount').value=0;
