@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>برنامج الفواتير</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root{--main:#1d4ed8;--bg:#f3f4f6;--line:#d1d5db;--txt:#111827}
   *{box-sizing:border-box}
@@ -167,19 +168,7 @@
       <div><label>الخصم (مبلغ)</label><input id="discount" type="number" min="0" step="any" value="0"></div>
       <div><label>الضريبة %</label><input id="taxRate" type="number" min="0" step="any" value="0"></div>
     </div>
-    <label>مقاس ورقة الطباعة</label>
-    <div class="seg light grid" id="paperSeg" data-for="paperSel">
-      <button data-v="a4"><span class="ic">📄</span>A4</button>
-      <button data-v="a5"><span class="ic">📄</span>A5</button>
-      <button data-v="r80"><span class="ic">🧾</span>80mm</button>
-      <button data-v="r58"><span class="ic">🧾</span>58mm</button>
-    </div>
-    <select id="paperSel" class="hidden">
-      <option value="a4">A4 (ورقة كاملة)</option>
-      <option value="a5">A5 (نصف ورقة)</option>
-      <option value="r80">إيصال حراري 80mm</option>
-      <option value="r58">إيصال حراري 58mm</option>
-    </select>
+    <select id="paperSel" class="hidden"><option value="a4">A4</option></select>
     <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn" id="printBtn">🖨️ طباعة / حفظ PDF</button>
       <button class="btn gray" id="previewBtn">👁️ معاينة</button>
@@ -218,6 +207,7 @@
 <div id="tab-history" class="wrap hidden">
   <div class="panel">
     <h2>الفواتير المحفوظة</h2>
+    <input id="histSearch" type="search" placeholder="ابحث باسم العميل أو هاتفه أو رقم الفاتورة" style="margin-bottom:10px">
     <table>
       <thead><tr><th>#</th><th>العميل</th><th>التاريخ</th><th>الإجمالي</th><th></th></tr></thead>
       <tbody id="histBody"></tbody>
@@ -233,6 +223,12 @@
       <div><label>اسم المادة</label><input id="pName"></div>
       <div><label>السعر</label><input id="pPrice" type="number" min="0" step="any"></div>
       <div class="fit"><button class="btn" id="pAdd">+ إضافة</button></div>
+    </div>
+    <h2 style="margin-top:18px">استيراد المواد من Excel</h2>
+    <div class="note">ملف Excel أو CSV فيه عمودان: اسم المادة والسعر (الصف الأول عناوين). المواد الموجودة بنفس الاسم يتحدّث سعرها.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center">
+      <input id="xlsFile" type="file" accept=".xlsx,.xls,.csv" style="flex:1;min-width:200px">
+      <button class="btn gray" id="xlsTpl">⬇️ تحميل نموذج الملف</button>
     </div>
     <h2 style="margin-top:18px">قائمة المواد</h2>
     <table>
@@ -259,7 +255,7 @@
     <input id="sLogo" type="file" accept="image/*">
     <div style="margin-top:8px"><img id="logoPrev" style="max-height:70px" alt=""> <button class="btn red sm" id="logoDel">حذف اللوجو</button></div>
     <h2 style="margin-top:20px">نموذج الصفحة للطباعة</h2>
-    <div class="note">ارفع صورة ورقة جاهزة (ترويسة المحل أو تصميم الصفحة) لتُطبع الفاتورة فوقها. تعمل مع مقاس A4 وA5.</div>
+    <div class="note">ارفع صورة ورقة جاهزة (ترويسة المحل أو تصميم الصفحة) لتُطبع الفاتورة فوقها. تعمل مع ورقة A4.</div>
     <input id="sTpl" type="file" accept="image/*">
     <div style="margin-top:8px"><img id="tplPrev" style="max-height:120px;border:1px solid var(--line)" alt=""> <button class="btn red sm" id="tplDel">حذف النموذج</button></div>
     <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="sTplHide" style="width:auto"> إخفاء الهيدر واللوجو الافتراضيين (لأن النموذج يحتوي ترويسة)</label>
@@ -344,7 +340,7 @@ async function loadAll(){
   renderProducts(); render(); applyPaper(); applyLang();
 }
 
-const FR = {"الإعدادات (أدمن)":"Paramètres (admin)","🔐 تسجيل الدخول": "🔐 Connexion", "رقم الهاتف": "Numéro de téléphone", "كلمة السر": "Mot de passe", "مثال: 36332213": "Exemple : 36332213", "بيانات الدخول غير صحيحة": "Identifiants incorrects", "الفواتير المحفوظة": "Factures enregistrées", "العميل": "Client", "فتح": "Ouvrir", "خروج": "Déconnexion", "لا توجد فواتير محفوظة": "Aucune facture enregistrée", "تعذر الحفظ": "Échec de l'enregistrement", "تم حفظ الفاتورة ✔": "Facture enregistrée ✔", "حذف هذه الفاتورة؟": "Supprimer cette facture ?","👁️ معاينة":"👁️ Aperçu","🖨️ طباعة":"🖨️ Imprimer","✖ إغلاق المعاينة":"✖ Fermer l'aperçu","رقم العميل":"Téléphone du client","الهاتف":"Téléphone","رقم العميل:":"Tél. client :","🧾 برنامج الفواتير": "🧾 Logiciel de facturation", "الفاتورة": "Facture", "المواد والأسعار": "Articles et prix", "🔒 الإعدادات (أدمن)": "🔒 Paramètres (admin)", "بيانات الفاتورة": "Informations de la facture", "اسم العميل": "Nom du client", "التاريخ": "Date", "إضافة مادة": "Ajouter un article", "اختر مادة من القائمة": "Choisir un article dans la liste", "اكتب اسم المادة": "Saisir le nom de l'article", "مثال: خدمة توصيل": "Exemple : Service de livraison", "احفظ هذه المادة في قائمة المواد": "Enregistrer cet article dans la liste", "الكمية": "Quantité", "السعر": "Prix", "+ إضافة": "+ Ajouter", "يمكنك تعديل السعر هنا قبل الإضافة. لإضافة مادة غير موجودة بالقائمة أضفها من تبويب \"المواد والأسعار\".": "Vous pouvez modifier le prix ici avant l'ajout. Pour un article absent de la liste, ajoutez-le dans l'onglet « Articles et prix ».", "بنود الفاتورة": "Lignes de la facture", "المادة": "Article", "الإجمالي": "Montant", "الخصم (مبلغ)": "Remise (montant)", "الضريبة %": "Taxe %", "مقاس ورقة الطباعة": "Format d'impression", "A4 (ورقة كاملة)": "A4 (page entière)", "A5 (نصف ورقة)": "A5 (demi-page)", "إيصال حراري 80mm": "Ticket thermique 80mm", "إيصال حراري 58mm": "Ticket thermique 58mm", "🖨️ طباعة / حفظ PDF": "🖨️ Imprimer / Enregistrer en PDF", "فاتورة جديدة": "Nouvelle facture", "عند ظهور نافذة الطباعة اختر الوجهة: \"حفظ بتنسيق PDF\" لتحصل على ملف PDF، أو اختر الطابعة للطباعة مباشرة.": "Dans la fenêtre d'impression, choisissez « Enregistrer au format PDF » pour obtenir un PDF, ou choisissez l'imprimante.", "فاتورة رقم:": "Facture N° :", "العميل:": "Client :", "التاريخ:": "Date :", "المجموع": "Sous-total", "الخصم": "Remise", "الضريبة": "Taxe", "الإجمالي النهائي": "Total", "إضافة مادة جديدة": "Ajouter un nouvel article", "اسم المادة": "Nom de l'article", "قائمة المواد": "Liste des articles", "عدّل الاسم أو السعر مباشرة داخل الجدول، والتغيير يُحفظ تلقائيا.": "Modifiez le nom ou le prix directement dans le tableau ; les changements sont enregistrés automatiquement.", "إعدادات الفاتورة (الأدمن)": "Paramètres de la facture (admin)", "اسم الشركة / المحل": "Nom de l'entreprise / magasin", "بيانات الهيدر (العنوان، الهاتف ...) — كل سطر في سطر جديد": "Informations d'en-tête (adresse, téléphone...) — une ligne par info", "نص أسفل الفاتورة (الفوتر)": "Texte de pied de page (arabe)", "نص أسفل الفاتورة بالفرنسية (الفوتر)": "Texte de pied de page (français)", "العملة": "Devise", "لون الفاتورة": "Couleur de la facture", "اللوجو": "Logo", "حذف اللوجو": "Supprimer le logo", "نموذج الصفحة للطباعة": "Modèle de page pour l'impression", "ارفع صورة ورقة جاهزة (ترويسة المحل أو تصميم الصفحة) لتُطبع الفاتورة فوقها. تعمل مع مقاس A4 وA5.": "Importez une image de page prête (en-tête ou design) sur laquelle la facture sera imprimée. Fonctionne avec A4 et A5.", "إخفاء الهيدر واللوجو الافتراضيين (لأن النموذج يحتوي ترويسة)": "Masquer l'en-tête et le logo par défaut (le modèle contient déjà un en-tête)", "مسافة من الأعلى (mm)": "Marge haut (mm)", "من الأسفل (mm)": "Bas (mm)", "من الجانبين (mm)": "Côtés (mm)", "زد \"المسافة من الأعلى\" حتى يبدأ محتوى الفاتورة تحت ترويسة النموذج. بعد الحفظ شاهد المعاينة وعدّل.": "Augmentez la marge haut pour que le contenu commence sous l'en-tête du modèle. Après l'enregistrement, vérifiez l'aperçu.", "حذف النموذج": "Supprimer le modèle", "رمز الأدمن الجديد (اتركه فارغا إن لم ترد تغييره)": "Nouveau code admin (laisser vide pour ne pas changer)", "الرمز الافتراضي: 1234": "Code par défaut : 1234", "حفظ الإعدادات": "Enregistrer les paramètres", "ملاحظة: الرمز حماية بسيطة فقط. البيانات محفوظة في قاعدة البيانات (Supabase).": "Remarque : le code n'est qu'une protection simple. Les données sont enregistrées dans la base de données (Supabase).", "🔒 رمز الأدمن": "🔒 Code admin", "دخول": "Entrer", "إلغاء": "Annuler", "نعم": "Oui", "— اختر مادة —": "— Choisir un article —", "✍️ كتابة مادة يدويا...": "✍️ Saisir un article manuellement...", "حذف": "Suppr.", "لا توجد بنود": "Aucune ligne", "اختر مادة من القائمة أو اكتب اسمها": "Choisissez un article dans la liste ou saisissez son nom", "أدخل كمية صحيحة": "Saisissez une quantité valide", "أضف مادة واحدة على الأقل": "Ajoutez au moins un article", "تعذر الحفظ في المتصفح": "Impossible d'enregistrer dans le navigateur", "الرمز غير صحيح": "Code incorrect", "تم الحفظ ✔": "Enregistré ✔", "تم حفظ اللوجو ✔": "Logo enregistré ✔", "تم حذف اللوجو": "Logo supprimé", "تعذر قراءة الصورة، جرّب صورة أخرى": "Impossible de lire l'image, essayez-en une autre", "تم حفظ نموذج الصفحة ✔": "Modèle enregistré ✔", "تعذر قراءة الصورة": "Impossible de lire l'image", "تم حذف النموذج": "Modèle supprimé", "حذف هذه المادة؟": "Supprimer cet article ?", "بدء فاتورة جديدة؟ سيتم مسح البنود الحالية.": "Nouvelle facture ? Les lignes actuelles seront effacées."};
+const FR = {"استيراد المواد من Excel": "Importer des articles depuis Excel", "ملف Excel أو CSV فيه عمودان: اسم المادة والسعر (الصف الأول عناوين). المواد الموجودة بنفس الاسم يتحدّث سعرها.": "Fichier Excel ou CSV avec deux colonnes : désignation et prix (la première ligne contient les titres). Les articles existants du même nom voient leur prix mis à jour.", "⬇️ تحميل نموذج الملف": "⬇️ Télécharger le modèle de fichier", "ابحث باسم العميل أو هاتفه أو رقم الفاتورة": "Rechercher par client, téléphone ou n° de facture", "تعذر تحميل مكتبة Excel": "Impossible de charger la bibliothèque Excel", "لم أجد مواد في الملف": "Aucun article trouvé dans le fichier", "تعذر قراءة الملف": "Impossible de lire le fichier", "تم الاستيراد ✔": "Import terminé ✔", "استيراد المواد": "Importer les articles", "جديدة": "nouveaux", "تحديث السعر": "prix mis à jour","الإعدادات (أدمن)":"Paramètres (admin)","🔐 تسجيل الدخول": "🔐 Connexion", "رقم الهاتف": "Numéro de téléphone", "كلمة السر": "Mot de passe", "مثال: 36332213": "Exemple : 36332213", "بيانات الدخول غير صحيحة": "Identifiants incorrects", "الفواتير المحفوظة": "Factures enregistrées", "العميل": "Client", "فتح": "Ouvrir", "خروج": "Déconnexion", "لا توجد فواتير محفوظة": "Aucune facture enregistrée", "تعذر الحفظ": "Échec de l'enregistrement", "تم حفظ الفاتورة ✔": "Facture enregistrée ✔", "حذف هذه الفاتورة؟": "Supprimer cette facture ?","👁️ معاينة":"👁️ Aperçu","🖨️ طباعة":"🖨️ Imprimer","✖ إغلاق المعاينة":"✖ Fermer l'aperçu","رقم العميل":"Téléphone du client","الهاتف":"Téléphone","رقم العميل:":"Tél. client :","🧾 برنامج الفواتير": "🧾 Logiciel de facturation", "الفاتورة": "Facture", "المواد والأسعار": "Articles et prix", "🔒 الإعدادات (أدمن)": "🔒 Paramètres (admin)", "بيانات الفاتورة": "Informations de la facture", "اسم العميل": "Nom du client", "التاريخ": "Date", "إضافة مادة": "Ajouter un article", "اختر مادة من القائمة": "Choisir un article dans la liste", "اكتب اسم المادة": "Saisir le nom de l'article", "مثال: خدمة توصيل": "Exemple : Service de livraison", "احفظ هذه المادة في قائمة المواد": "Enregistrer cet article dans la liste", "الكمية": "Quantité", "السعر": "Prix", "+ إضافة": "+ Ajouter", "يمكنك تعديل السعر هنا قبل الإضافة. لإضافة مادة غير موجودة بالقائمة أضفها من تبويب \"المواد والأسعار\".": "Vous pouvez modifier le prix ici avant l'ajout. Pour un article absent de la liste, ajoutez-le dans l'onglet « Articles et prix ».", "بنود الفاتورة": "Lignes de la facture", "المادة": "Article", "الإجمالي": "Montant", "الخصم (مبلغ)": "Remise (montant)", "الضريبة %": "Taxe %", "مقاس ورقة الطباعة": "Format d'impression", "A4 (ورقة كاملة)": "A4 (page entière)", "A5 (نصف ورقة)": "A5 (demi-page)", "إيصال حراري 80mm": "Ticket thermique 80mm", "إيصال حراري 58mm": "Ticket thermique 58mm", "🖨️ طباعة / حفظ PDF": "🖨️ Imprimer / Enregistrer en PDF", "فاتورة جديدة": "Nouvelle facture", "عند ظهور نافذة الطباعة اختر الوجهة: \"حفظ بتنسيق PDF\" لتحصل على ملف PDF، أو اختر الطابعة للطباعة مباشرة.": "Dans la fenêtre d'impression, choisissez « Enregistrer au format PDF » pour obtenir un PDF, ou choisissez l'imprimante.", "فاتورة رقم:": "Facture N° :", "العميل:": "Client :", "التاريخ:": "Date :", "المجموع": "Sous-total", "الخصم": "Remise", "الضريبة": "Taxe", "الإجمالي النهائي": "Total", "إضافة مادة جديدة": "Ajouter un nouvel article", "اسم المادة": "Nom de l'article", "قائمة المواد": "Liste des articles", "عدّل الاسم أو السعر مباشرة داخل الجدول، والتغيير يُحفظ تلقائيا.": "Modifiez le nom ou le prix directement dans le tableau ; les changements sont enregistrés automatiquement.", "إعدادات الفاتورة (الأدمن)": "Paramètres de la facture (admin)", "اسم الشركة / المحل": "Nom de l'entreprise / magasin", "بيانات الهيدر (العنوان، الهاتف ...) — كل سطر في سطر جديد": "Informations d'en-tête (adresse, téléphone...) — une ligne par info", "نص أسفل الفاتورة (الفوتر)": "Texte de pied de page (arabe)", "نص أسفل الفاتورة بالفرنسية (الفوتر)": "Texte de pied de page (français)", "العملة": "Devise", "لون الفاتورة": "Couleur de la facture", "اللوجو": "Logo", "حذف اللوجو": "Supprimer le logo", "نموذج الصفحة للطباعة": "Modèle de page pour l'impression", "ارفع صورة ورقة جاهزة (ترويسة المحل أو تصميم الصفحة) لتُطبع الفاتورة فوقها. تعمل مع ورقة A4.": "Importez une image de page prête (en-tête ou design) sur laquelle la facture sera imprimée. Fonctionne avec une page A4.", "إخفاء الهيدر واللوجو الافتراضيين (لأن النموذج يحتوي ترويسة)": "Masquer l'en-tête et le logo par défaut (le modèle contient déjà un en-tête)", "مسافة من الأعلى (mm)": "Marge haut (mm)", "من الأسفل (mm)": "Bas (mm)", "من الجانبين (mm)": "Côtés (mm)", "زد \"المسافة من الأعلى\" حتى يبدأ محتوى الفاتورة تحت ترويسة النموذج. بعد الحفظ شاهد المعاينة وعدّل.": "Augmentez la marge haut pour que le contenu commence sous l'en-tête du modèle. Après l'enregistrement, vérifiez l'aperçu.", "حذف النموذج": "Supprimer le modèle", "رمز الأدمن الجديد (اتركه فارغا إن لم ترد تغييره)": "Nouveau code admin (laisser vide pour ne pas changer)", "الرمز الافتراضي: 1234": "Code par défaut : 1234", "حفظ الإعدادات": "Enregistrer les paramètres", "ملاحظة: الرمز حماية بسيطة فقط. البيانات محفوظة في قاعدة البيانات (Supabase).": "Remarque : le code n'est qu'une protection simple. Les données sont enregistrées dans la base de données (Supabase).", "🔒 رمز الأدمن": "🔒 Code admin", "دخول": "Entrer", "إلغاء": "Annuler", "نعم": "Oui", "— اختر مادة —": "— Choisir un article —", "✍️ كتابة مادة يدويا...": "✍️ Saisir un article manuellement...", "حذف": "Suppr.", "لا توجد بنود": "Aucune ligne", "اختر مادة من القائمة أو اكتب اسمها": "Choisissez un article dans la liste ou saisissez son nom", "أدخل كمية صحيحة": "Saisissez une quantité valide", "أضف مادة واحدة على الأقل": "Ajoutez au moins un article", "تعذر الحفظ في المتصفح": "Impossible d'enregistrer dans le navigateur", "الرمز غير صحيح": "Code incorrect", "تم الحفظ ✔": "Enregistré ✔", "تم حفظ اللوجو ✔": "Logo enregistré ✔", "تم حذف اللوجو": "Logo supprimé", "تعذر قراءة الصورة، جرّب صورة أخرى": "Impossible de lire l'image, essayez-en une autre", "تم حفظ نموذج الصفحة ✔": "Modèle enregistré ✔", "تعذر قراءة الصورة": "Impossible de lire l'image", "تم حذف النموذج": "Modèle supprimé", "حذف هذه المادة؟": "Supprimer cet article ?", "بدء فاتورة جديدة؟ سيتم مسح البنود الحالية.": "Nouvelle facture ? Les lignes actuelles seront effacées."};
 const T = k => (db && db.lang === 'fr' && FR[k]) || k;
 function applyLang(){
   const fr = db.lang === 'fr';
@@ -422,6 +418,74 @@ $('pAdd').onclick = async () => {
   await addProduct(n, parseFloat($('pPrice').value)||0);
   $('pName').value=''; $('pPrice').value='';
 };
+// ===== استيراد المواد من Excel =====
+const NAME_KEYS = ['اسمالمادة','المادة','مادة','الاسم','اسم','name','nom','article','designation','désignation','produit','item','product','description'];
+const PRICE_KEYS = ['السعر','سعر','price','prix','prixunitaire','pu','سعرالوحدة','المبلغ'];
+const normKey = v => String(v == null ? '' : v).toLowerCase().replace(/[\s_\-.:]/g, '');
+function parsePrice(v){
+  if (typeof v === 'number') return v;
+  let t = String(v == null ? '' : v).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[^\d.,]/g, '');
+  if (!t) return NaN;
+  if (t.includes(',') && t.includes('.')) t = t.replace(/,/g, '');
+  else if ((t.match(/,/g) || []).length === 1 && /,\d{1,2}$/.test(t)) t = t.replace(',', '.');
+  else t = t.replace(/,/g, '');
+  return parseFloat(t);
+}
+function parseMaterialsRows(rows){
+  let ni = 0, pi = 1, start = 0;
+  const hdr = (rows[0] || []).map(normKey);
+  const n = hdr.findIndex(h => NAME_KEYS.includes(h)), p = hdr.findIndex(h => PRICE_KEYS.includes(h));
+  if (n >= 0 || p >= 0) { ni = n >= 0 ? n : (p === 0 ? 1 : 0); pi = p >= 0 ? p : (ni === 0 ? 1 : 0); start = 1; }
+  const out = [];
+  for (let i = start; i < rows.length; i++) {
+    const r = rows[i] || [];
+    const name = String(r[ni] == null ? '' : r[ni]).trim();
+    if (!name) continue;
+    const price = parsePrice(r[pi]);
+    out.push({ name, price: isNaN(price) ? 0 : price });
+  }
+  return out;
+}
+let pendingImport = null;
+async function doImport(){
+  if (!pendingImport) return;
+  const { toAdd, toUpd } = pendingImport; pendingImport = null;
+  for (let i = 0; i < toAdd.length; i += 500) {
+    const { data, error } = await sb.from('products').insert(toAdd.slice(i, i + 500)).select();
+    if (error) return dbErr(error);
+    (data || []).forEach(r => db.products.push(fixProd(r)));
+  }
+  for (let i = 0; i < toUpd.length; i += 20) {
+    const res = await Promise.all(toUpd.slice(i, i + 20).map(it => sb.from('products').update({ price: it.price }).eq('id', it.id)));
+    const bad = res.find(r => r.error); if (bad) return dbErr(bad.error);
+    toUpd.slice(i, i + 20).forEach(it => { const p = db.products.find(x => x.id === it.id); if (p) p.price = it.price; });
+  }
+  renderProducts(); toast(T('تم الاستيراد ✔'));
+}
+async function importFromFile(file){
+  try {
+    if (!window.XLSX) return toast(T('تعذر تحميل مكتبة Excel'));
+    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+    const items = parseMaterialsRows(rows);
+    if (!items.length) return toast(T('لم أجد مواد في الملف'));
+    const uniq = new Map(); items.forEach(it => uniq.set(it.name.toLowerCase(), it));
+    const existing = new Map(db.products.map(p => [p.name.trim().toLowerCase(), p]));
+    const toAdd = [], toUpd = [];
+    uniq.forEach((it, key) => { const ex = existing.get(key); if (ex) toUpd.push({ id: ex.id, price: it.price }); else toAdd.push(it); });
+    pendingImport = { toAdd, toUpd };
+    confirmBox(T('استيراد المواد') + ': ' + toAdd.length + ' ' + T('جديدة') + ' / ' + toUpd.length + ' ' + T('تحديث السعر'), doImport);
+  } catch (err) { toast(T('تعذر قراءة الملف')); }
+}
+$('xlsFile').onchange = async e => { const f = e.target.files[0]; if (f) await importFromFile(f); e.target.value = ''; };
+$('xlsTpl').onclick = () => {
+  if (!window.XLSX) return toast(T('تعذر تحميل مكتبة Excel'));
+  const fr = db.lang === 'fr';
+  const ws = XLSX.utils.aoa_to_sheet([fr ? ['Désignation','Prix'] : ['اسم المادة','السعر'], [fr ? 'Caméra 5MP' : 'كاميرا 5MP', 900], [fr ? 'Câble RG59 100M' : 'كابل RG59 100M', 800]]);
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Articles');
+  XLSX.writeFile(wb, 'materials-template.xlsx');
+};
+
 $('prodSelect').onchange = () => {
   const manual = $('prodSelect').value === '__manual__';
   $('manualBox').classList.toggle('hidden', !manual);
@@ -531,9 +595,16 @@ $('newBtn').onclick = () => confirmBox(T('بدء فاتورة جديدة؟ سي�
 
 // ===== الفواتير المحفوظة =====
 async function loadHistory(){
-  const { data, error } = await sb.from('invoices').select('id,number,customer,invoice_date,total').order('number',{ascending:false}).limit(200);
+  const q = ($('histSearch').value || '').replace(/[,()*%\\]/g, ' ').trim();
+  let qb = sb.from('invoices').select('id,number,customer,customer_phone,invoice_date,total').order('number',{ascending:false}).limit(200);
+  if (q) {
+    const conds = ['customer.ilike.%' + q + '%', 'customer_phone.ilike.%' + q + '%'];
+    if (/^\d+$/.test(q)) conds.push('number.eq.' + parseInt(q, 10));
+    qb = qb.or(conds.join(','));
+  }
+  const { data, error } = await qb;
   if(error) return dbErr(error);
-  $('histBody').innerHTML = (data||[]).map(r => `<tr><td>${String(r.number).padStart(4,'0')}</td><td>${esc(r.customer||'—')}</td><td>${esc(r.invoice_date||'')}</td><td>${fmt(Number(r.total))}</td><td><button class="btn sm" onclick="openInvoice(${r.id})">${T('فتح')}</button> <button class="btn red sm" onclick="delInvoice(${r.id})">${T('حذف')}</button></td></tr>`).join('')
+  $('histBody').innerHTML = (data||[]).map(r => `<tr><td>${String(r.number).padStart(4,'0')}</td><td>${esc(r.customer||'—')}${r.customer_phone ? '<br><small>'+esc(r.customer_phone)+'</small>' : ''}</td><td>${esc(r.invoice_date||'')}</td><td>${fmt(Number(r.total))}</td><td><button class="btn sm" onclick="openInvoice(${r.id})">${T('فتح')}</button> <button class="btn red sm" onclick="delInvoice(${r.id})">${T('حذف')}</button></td></tr>`).join('')
     || '<tr><td colspan="5" style="text-align:center;color:#9ca3af">'+T('لا توجد فواتير محفوظة')+'</td></tr>';
 }
 window.openInvoice = async id => {
@@ -617,7 +688,7 @@ $('sSave').onclick = () => {
 // ===== مقاس الورقة =====
 const PAPERS = {a4:{s:'A4',m:'14mm',pw:'210mm',ph:'296mm'}, a5:{s:'A5',m:'10mm',pw:'148mm',ph:'209mm'}, r80:{s:'80mm auto',m:'3mm',w:'302px'}, r58:{s:'58mm auto',m:'2mm',w:'219px'}};
 function applyPaper(){
-  const k = PAPERS[db.paper] ? db.paper : 'a4', p = PAPERS[k];
+  const k = 'a4', p = PAPERS[k];
   const s = db.settings, tpl = !!s.tpl && !p.w;
   $('paperSel').value = k; document.body.dataset.paper = k;
   let st = $('pageStyle');
@@ -663,6 +734,8 @@ $('pvClose').onclick = () => setPreview(false);
 $('pvPrint').onclick = () => $('printBtn').click();
 document.addEventListener('keydown', e => { if(e.key === 'Escape') setPreview(false); });
 window.addEventListener('resize', fitSheet);
+let histTimer;
+$('histSearch').addEventListener('input', () => { clearTimeout(histTimer); histTimer = setTimeout(loadHistory, 300); });
 $('langSel').onchange = () => { db.lang = $('langSel').value; savePrefs(); applyLang(); renderProducts(); render(); };
 
 // ===== تسجيل الدخول برقم الهاتف =====
