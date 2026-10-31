@@ -55,7 +55,8 @@
   body.preview #pvBar{display:flex}
   body.preview header.top,body.preview .panel{display:none!important}
   body.preview .wrap{justify-content:center;padding-top:70px}
-  body.preview #sheet{box-shadow:0 4px 20px rgba(0,0,0,.2);max-width:100%}
+  body.preview #sheet{box-shadow:0 4px 20px rgba(0,0,0,.2)}
+  body.preview #sheet:not(.tpl){max-width:100%}
   body.preview[data-paper=a4] #sheet:not(.tpl){width:210mm;flex:none}
   body.preview[data-paper=a5] #sheet:not(.tpl){width:148mm;flex:none}
   body.locked header.top,body.locked .wrap{display:none!important}
@@ -63,7 +64,25 @@
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:50}
   .mbox{background:#fff;padding:18px;border-radius:10px;width:300px}
   #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 18px;border-radius:8px;z-index:60;display:none;font-size:14px}
+  @media (max-width:800px){
+    header.top{padding:10px 12px;flex-wrap:nowrap;overflow-x:auto;gap:6px}
+    header.top h1{font-size:15px;margin:0 6px 0 0;white-space:nowrap}
+    .tab{white-space:nowrap;padding:8px 12px}
+    header.top select{min-width:96px}
+    .wrap{padding:8px;gap:10px}
+    .panel{min-width:0;width:100%;flex:none;padding:12px;overflow-x:auto}
+    #sheet{min-width:0;width:100%;flex:none;padding:16px}
+    .mbox{width:min(320px,92vw)!important}
+    input,select,textarea{font-size:16px}
+    button.btn{padding:11px 14px}
+    td input{width:72px}
+    .row{flex-wrap:wrap}
+    .row>*{min-width:90px}
+    body.preview .wrap{padding-top:64px}
+    html,body{overflow-x:hidden}
+  }
   @media print{
+    #sheet{zoom:1!important}
     .modal,#toast{display:none!important}
     #sheet.narrow,#sheet.tpl{width:100%!important;max-width:none!important}
     body{background:#fff}
@@ -580,17 +599,26 @@ function applyPaper(){
   sh.style.backgroundImage = tpl ? 'url(' + s.tpl + ')' : '';
   sh.style.padding = tpl ? (s.tplTop + 'mm ' + s.tplSide + 'mm ' + s.tplBottom + 'mm') : '';
   $('invHead').classList.toggle('hidden', tpl && !!s.tplHide);
+  fitSheet();
+}
+function fitSheet(){
+  const sh = $('sheet'); sh.style.zoom = '';
+  const vw = Math.min(window.innerWidth, document.documentElement.clientWidth);
+  if (vw > 800) return;
+  const avail = vw - 16, w = sh.offsetWidth;
+  if (w > avail && avail > 0) sh.style.zoom = (avail / w).toFixed(3);
 }
 $('paperSel').onchange = () => { db.paper = $('paperSel').value; savePrefs(); applyPaper(); };
 
 // ===== بدء =====
 $('idate').value = new Date().toISOString().slice(0,10);
 renderProducts(); render(); applyPaper(); applyLang();
-const setPreview = on => { document.body.classList.toggle('preview', on); if(on) window.scrollTo(0,0); };
+const setPreview = on => { document.body.classList.toggle('preview', on); fitSheet(); if(on) window.scrollTo(0,0); };
 $('previewBtn').onclick = () => setPreview(true);
 $('pvClose').onclick = () => setPreview(false);
 $('pvPrint').onclick = () => $('printBtn').click();
 document.addEventListener('keydown', e => { if(e.key === 'Escape') setPreview(false); });
+window.addEventListener('resize', fitSheet);
 $('langSel').onchange = () => { db.lang = $('langSel').value; savePrefs(); applyLang(); renderProducts(); render(); };
 
 // ===== تسجيل الدخول برقم الهاتف =====
