@@ -792,7 +792,7 @@ $('uAdd').onclick = async () => {
   if(!/\d{6,}/.test(ph.replace(/\D/g,''))){ toast(T('أدخل رقم هاتف صحيح')); return; }
   if(pw.length<6){ toast(T('كلمة السر يجب ألا تقل عن 6 خانات')); return; }
   const { error } = await sb.rpc('admin_create_user', { p_email: phoneToEmail(ph), p_password: pw });
-  if(error){ toast(T(/exists/.test(error.message)?'هذا المستخدم موجود مسبقا':'تعذرت إضافة المستخدم')); return; }
+  if(error){ console.error(error); toast(/exists/.test(error.message)?T('هذا المستخدم موجود مسبقا'):T('تعذرت إضافة المستخدم')+' — '+(error.message||'').slice(0,120)); return; }
   $('uPhone').value=''; $('uPass').value=''; toast(T('تمت إضافة المستخدم ✔')); loadUsers();
 };
 
