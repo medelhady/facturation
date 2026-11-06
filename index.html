@@ -891,6 +891,10 @@ const phoneToEmail = ph => {
 async function enterApp(){
   document.body.classList.remove('locked'); $('loginBox').classList.add('hidden');
   await loadAll();
+  // إعدادات الأدمن تظهر للمدير فقط (إن لم تكن الدالة مفعّلة نُبقيها ظاهرة لتجنب القفل)
+  let isAdmin = true;
+  try { const r = await sb.rpc('am_i_admin'); if (!r.error && r.data === false) isAdmin = false; } catch(e){}
+  const at = document.querySelector('.tab[data-tab="admin"]'); if (at) at.style.display = isAdmin ? '' : 'none';
 }
 $('loginBtn').onclick = async () => {
   $('loginErr').textContent = '';

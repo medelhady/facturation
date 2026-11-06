@@ -51,6 +51,12 @@ begin
   if p_ban then delete from auth.sessions where user_id = p_id; end if;
 end $$;
 
+create or replace function am_i_admin() returns boolean language sql security definer set search_path = public as $$
+  select exists (select 1 from app_admins where user_id = auth.uid())
+$$;
+revoke all on function am_i_admin() from public, anon;
+grant execute on function am_i_admin() to authenticated;
+
 -- نقل صلاحية المدير إلى مستخدم آخر (المدير الحالي يفقدها)
 create or replace function admin_transfer(p_id uuid)
 returns void language plpgsql security definer set search_path = public, auth as $$
