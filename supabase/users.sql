@@ -26,7 +26,7 @@ begin
 end $$;
 
 create or replace function admin_create_user(p_email text, p_password text)
-returns void language plpgsql security definer set search_path = public, auth as $$
+returns void language plpgsql security definer set search_path = public, auth, extensions as $$
 declare uid uuid := gen_random_uuid();
 begin
   perform _assert_admin();
@@ -36,7 +36,7 @@ begin
     raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
     confirmation_token, recovery_token, email_change, email_change_token_new)
   values ('00000000-0000-0000-0000-000000000000', uid, 'authenticated', 'authenticated', lower(p_email),
-    crypt(p_password, gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', '', '');
+    extensions.crypt(p_password, extensions.gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', '', '');
   insert into auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
   values (gen_random_uuid(), uid, jsonb_build_object('sub', uid::text, 'email', lower(p_email), 'email_verified', true),
     'email', uid::text, now(), now(), now());
