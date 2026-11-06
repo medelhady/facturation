@@ -6,7 +6,12 @@ create table if not exists app_admins (user_id uuid primary key references auth.
 alter table app_admins enable row level security;
 
 -- أول مستخدم تم إنشاؤه يصبح مدير المستخدمين
-insert into app_admins select id from auth.users order by created_at limit 1 on conflict do nothing;
+insert into app_admins select id from auth.users where not exists (select 1 from app_admins) order by created_at limit 1;
+
+-- مدير واحد فقط: نبقي الأقدم ونمنع إضافة غيره
+delete from app_admins where user_id <> (
+  select a.user_id from app_admins a join auth.users u on u.id = a.user_id order by u.created_at limit 1);
+create unique index if not exists only_one_admin on app_admins ((true));
 
 create or replace function _assert_admin() returns void language plpgsql security definer set search_path = public, auth as $$
 begin
