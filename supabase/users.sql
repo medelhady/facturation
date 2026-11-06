@@ -47,7 +47,7 @@ returns void language plpgsql security definer set search_path = public, auth as
 begin
   perform _assert_admin();
   if p_id = auth.uid() then raise exception 'cannot change self'; end if;
-  update auth.users set banned_until = case when p_ban then 'infinity'::timestamptz else null end where id = p_id;
+  update auth.users set banned_until = case when p_ban then timestamptz '2125-01-01' else null end where id = p_id;
   if p_ban then delete from auth.sessions where user_id = p_id; end if;
 end $$;
 
@@ -73,3 +73,6 @@ grant execute on function admin_transfer(uuid) to authenticated;
 
 revoke all on function admin_list_users(), admin_create_user(text,text), admin_set_ban(uuid,boolean) from public, anon;
 grant execute on function admin_list_users(), admin_create_user(text,text), admin_set_ban(uuid,boolean) to authenticated;
+
+-- تصحيح من أُوقفوا سابقا (قيمة infinity لا يفهمها نظام الدخول)
+update auth.users set banned_until = timestamptz '2125-01-01' where banned_until = 'infinity';
