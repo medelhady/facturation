@@ -888,7 +888,29 @@ const phoneToEmail = ph => {
   if (d.length === 8) d = '222' + d;
   return d + '@facturation.app';
 };
+const BANNED_MSG = 'انتهى العرض المجاني، يرجى شراء استضافة';
+try { if (sessionStorage.getItem('kicked')) { sessionStorage.removeItem('kicked'); $('loginErr').textContent = T(BANNED_MSG); } } catch(e){}
+let watchTimer = null;
+async function checkActive(){
+  try {
+    const { data, error } = await sb.auth.getUser();
+    const bu = data && data.user && data.user.banned_until;
+    const banned = bu && new Date(bu) > new Date();
+    const dead = error && (error.status === 401 || error.status === 403 || /session|banned|jwt/i.test(error.code || error.message || ''));
+    if (banned || dead) {
+      try { sessionStorage.setItem('kicked', '1'); } catch(e){}
+      try { await sb.auth.signOut(); } catch(e){}
+      location.reload();
+    }
+  } catch(e){}
+}
+function startWatch(){
+  if (watchTimer) return;
+  watchTimer = setInterval(checkActive, 20000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkActive(); });
+}
 async function enterApp(){
+  startWatch();
   document.body.classList.remove('locked'); $('loginBox').classList.add('hidden');
   await loadAll();
   // إعدادات الأدمن تظهر للمدير فقط (إن لم تكن الدالة مفعّلة نُبقيها ظاهرة لتجنب القفل)
