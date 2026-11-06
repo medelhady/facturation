@@ -778,7 +778,7 @@ async function loadUsers(){
 function makeAdmin(id){
   confirmBox(T('نقل صلاحية المدير إلى هذا المستخدم؟ ستفقد أنت هذه الصلاحية.'), async () => {
     const { error } = await sb.rpc('admin_transfer', { p_id:id });
-    if(error){ toast(T('تعذر التنفيذ')); return; }
+    if(error){ console.error(error); toast(T('تعذر التنفيذ')+' — '+(error.message||'').slice(0,120)); return; }
     toast(T('تم تغيير المدير ✔')); loadUsers();
   });
 }

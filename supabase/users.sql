@@ -64,7 +64,7 @@ begin
   perform _assert_admin();
   if p_id = auth.uid() then raise exception 'already admin'; end if;
   if not exists (select 1 from auth.users where id = p_id and (banned_until is null or banned_until < now())) then raise exception 'invalid user'; end if;
-  delete from app_admins;
+  delete from app_admins where user_id is not null;
   insert into app_admins values (p_id);
 end $$;
 
