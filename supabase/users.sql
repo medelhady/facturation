@@ -51,5 +51,19 @@ begin
   if p_ban then delete from auth.sessions where user_id = p_id; end if;
 end $$;
 
+-- نقل صلاحية المدير إلى مستخدم آخر (المدير الحالي يفقدها)
+create or replace function admin_transfer(p_id uuid)
+returns void language plpgsql security definer set search_path = public, auth as $$
+begin
+  perform _assert_admin();
+  if p_id = auth.uid() then raise exception 'already admin'; end if;
+  if not exists (select 1 from auth.users where id = p_id and (banned_until is null or banned_until < now())) then raise exception 'invalid user'; end if;
+  delete from app_admins;
+  insert into app_admins values (p_id);
+end $$;
+
+revoke all on function admin_transfer(uuid) from public, anon;
+grant execute on function admin_transfer(uuid) to authenticated;
+
 revoke all on function admin_list_users(), admin_create_user(text,text), admin_set_ban(uuid,boolean) from public, anon;
 grant execute on function admin_list_users(), admin_create_user(text,text), admin_set_ban(uuid,boolean) to authenticated;
